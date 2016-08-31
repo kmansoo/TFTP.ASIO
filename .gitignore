@@ -1,0 +1,9 @@
+.DS_Store
+._.DS_Store
+.project
+
+Release/
+Debug/
+\build/
+\dependency/
+\.vscode/
