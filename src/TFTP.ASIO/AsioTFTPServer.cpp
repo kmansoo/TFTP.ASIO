@@ -10,16 +10,8 @@ AsioTFTPServer::AsioTFTPServer(boost::asio::io_service& io_service, const std::s
     packet_in_length_ = 0;
     
     // resolve the host name and port number to an iterator that can be used to connect to the server
-    std::string port = bind_port;
-
-    if (bind_port.length() == 0)
-        port = "69";
-
     tftp_transaction_ = std::make_shared<TFTPServerTransaction>(this, path);
 
-    //socket_.bind(udp::endpoint(udp::v4(), std::stoi(port)));
-    //  , udp::endpoint(udp::v4(), std::stoi(bind_port)
-    
     remote_endpoint_ = server_endpoint_;
 
     receive_start();

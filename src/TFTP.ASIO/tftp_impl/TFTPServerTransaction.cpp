@@ -9,6 +9,7 @@
 #include <stdio.h>
 
 #include <chrono>
+#include <iostream>
 
 #include "TFTPServerTransaction.h"
 #include "TFTPFile.h"
@@ -22,6 +23,13 @@ TFTPServerTransaction::TFTPServerTransaction(TFTPTransport* transport, const std
         int operation = 0;
 
         while (is_stop_ == false) {
+
+            // We're going to wait for 1 millisecond.
+            if (stateOfTFTP_ == TFTP_STATE_WAIT || stateOfTFTP_ == TFTP_STATE_STANDBY) {
+                std::unique_lock<std::mutex> lk(mtx_);
+                cv_.wait_for(lk, std::chrono::milliseconds(1));
+            }
+
             switch (stateOfTFTP_) {
             case TFTP_STATE_STANDBY:
                 operation = state_standby();
@@ -45,8 +53,6 @@ TFTPServerTransaction::TFTPServerTransaction(TFTPTransport* transport, const std
             }
 
             finite_state_machine_server(&stateOfTFTP_, &operation);
-
-            //  std::this_thread::sleep_for(std::chrono::microseconds(500));
         }
     });
 }
@@ -111,12 +117,6 @@ int TFTPServerTransaction::state_wait() {
     transaction_.timed_out = 0;
 
     if (transport_) {
-        // We're going to wait for 200 seconds.
-        {
-            std::unique_lock<std::mutex> lk(mtx_);
-            cv_.wait_for(lk, std::chrono::milliseconds(200));
-        }
-
         if (transport_->has_received_data()) {
             packet_in_length_ = transport_->get_received_tftp_data(packet_in_buffer_, TFTP_PACKETSIZE);
 
@@ -133,7 +133,10 @@ int TFTPServerTransaction::state_wait() {
     if (operation == -1) {
         transaction_.timeout_count++;
 
-        if (transaction_.timeout_count == TFTP_TIMEOUT_LIMIT) {
+         // This transaction will be timeout after 2 seconds 
+         // because TFTP_TIMEOUT_LIMIT is 10 and a waiting duration is 1 millisecond.
+         // So TFTP_TIMEOUT_LIMIT(10) * 200 is 2000(milliseconds).
+        if (transaction_.timeout_count == TFTP_TIMEOUT_LIMIT * 200) {
             fprintf(stderr, "# Timeout.\n");
             operation = TFTP_OPERATION_ABANDONED;
         }

@@ -96,6 +96,12 @@ std::shared_ptr<std::thread> TFTPClientTransaction::perform_transaction() {
 
         while (stateOfTFTP_ != TFTP_STATE_FINISHED) {
 
+            // We're going to wait for 1 millisecond.
+            if (stateOfTFTP_ == TFTP_STATE_WAIT) {
+                std::unique_lock<std::mutex> lk(mtx_);
+                cv_.wait_for(lk, std::chrono::milliseconds(1));
+            }
+
             switch (stateOfTFTP_) {
             case TFTP_STATE_SEND:
                 operation = state_send();
@@ -136,12 +142,6 @@ int TFTPClientTransaction::state_wait() {
     transaction_.timed_out = 0;
 
     if (transport_) {
-        // We're going to wait for 200 seconds.
-        {
-            std::unique_lock<std::mutex> lk(mtx_);
-            cv_.wait_for(lk, std::chrono::milliseconds(200));
-        }
-
         if (transport_->has_received_data()) {
             packet_in_length_ = transport_->get_received_tftp_data(packet_in_buffer_, TFTP_PACKETSIZE);
 
@@ -158,7 +158,10 @@ int TFTPClientTransaction::state_wait() {
     if (operation == -1) {
         transaction_.timeout_count++;
 
-        if (transaction_.timeout_count == TFTP_TIMEOUT_LIMIT) {
+         // This transaction will be timeout after 2 seconds 
+         // because TFTP_TIMEOUT_LIMIT is 10 and a waiting duration is 1 millisecond.
+         // So TFTP_TIMEOUT_LIMIT(10) * 200 is 2000(milliseconds).
+        if (transaction_.timeout_count == TFTP_TIMEOUT_LIMIT * 200) {
             fprintf(stderr, "# Timeout.\n");
             operation = TFTP_OPERATION_ABANDONED;
         }
