@@ -58,6 +58,9 @@ TFTPServerTransaction::TFTPServerTransaction(TFTPTransport* transport, const std
 }
 
 TFTPServerTransaction::~TFTPServerTransaction() {
+    stop();
+    cv_.notify_one();
+
     thread_.join();
 }
 

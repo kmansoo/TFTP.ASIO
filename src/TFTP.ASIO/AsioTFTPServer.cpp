@@ -20,6 +20,11 @@ AsioTFTPServer::AsioTFTPServer(boost::asio::io_service& io_service, const std::s
 AsioTFTPServer::~AsioTFTPServer() {
     if (socket_.is_open())
         socket_.close();
+
+    if (tftp_transaction_) {
+        tftp_transaction_->stop();
+        tftp_transaction_ = nullptr;
+    }
 }
 
 bool AsioTFTPServer::is_open() {
@@ -112,6 +117,7 @@ void AsioTFTPServer::handle_receive_from(const boost::system::error_code& error,
     else {
         remote_endpoint_ = server_endpoint_;
 
-        receive_start();
+        if (socket_.is_open())
+            receive_start();
     }
 }
