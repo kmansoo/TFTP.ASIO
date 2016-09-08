@@ -295,6 +295,14 @@ int TFTPTransaction::packet_receive_rrq() {
         transaction_.filepos = ((transaction_.blocknum * TFTP_BLIMIT) - TFTP_BLIMIT);
         transaction_.filebuffer_length = file_->read_buffer_from_pos(&transaction_);
         packet_form_data();
+
+        if (transport_) {
+            int max_block_size = (file_->get_length() / TFTP_BLIMIT) + 1;
+            transport_->on_tftp_start_transaction(max_block_size);
+
+            if (transport_)
+                transport_->on_tftp_progress_transaction(transaction_.blocknum);
+        }
     }
     
     return TFTP_OPERATION_DONE;
@@ -332,6 +340,10 @@ int TFTPTransaction::packet_receive_wrq() {
         transaction_.ecode = TFTP_ECODE_1;
         packet_form_error();       
     } else {
+
+        if (transport_)
+            transport_->on_tftp_start_transaction(0);
+
         packet_form_ack();
         transaction_.blocknum++;
     }
@@ -347,6 +359,10 @@ int TFTPTransaction::packet_receive_data() {
             packet_free();
             packet_form_error();           
         } else {
+
+            if (transport_)
+                transport_->on_tftp_progress_transaction(transaction_.blocknum);
+
             packet_free();
             packet_form_ack();
             transaction_.blocknum++;
@@ -359,6 +375,9 @@ int TFTPTransaction::packet_receive_data() {
 
         transaction_.file_open = 0;
         transaction_.complete = 1;
+
+        if (transport_)
+            transport_->on_tftp_completed_transaction();
     }
     
     return TFTP_OPERATION_DONE;
@@ -388,11 +407,19 @@ int TFTPTransaction::packet_receive_ack() {
         } else {
             transaction_.filepos = ((transaction_.blocknum * TFTP_BLIMIT) - TFTP_BLIMIT);
             transaction_.filebuffer_length = file_->read_buffer_from_pos(&transaction_);
+
             if (!transaction_.filebuffer_length) {
                 transaction_.complete = 1;
+
+                if (transport_)
+                    transport_->on_tftp_completed_transaction();
+
                 return TFTP_OPERATION_ABANDONED;               
             } else {
                 packet_form_data();
+
+                if (transport_)
+                    transport_->on_tftp_progress_transaction(transaction_.blocknum);
             }
         }
     }

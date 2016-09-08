@@ -30,12 +30,14 @@ int main(int argc, char* argv[]) {
         boost::asio::io_service io_service;
 
         std::cout << std::endl;
+        std::cout << "local_path: " << params[0] << std::endl;
+        std::cout << "port: " << params[1] << std::endl;
         std::cout << "Now, TFTPServer is ready to service for Client" << std::endl << std::endl;
-
-        AsioTFTPServer tftp_server(io_service, params[0], params[1]);
 
         boost::asio::io_service::work work(io_service);
         std::thread thread([&io_service]() { io_service.run(); });
+
+        AsioTFTPServer tftp_server(io_service, params[0], params[1]);
 
         thread.join();
     }

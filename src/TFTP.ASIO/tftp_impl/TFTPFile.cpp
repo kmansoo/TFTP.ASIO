@@ -53,17 +53,47 @@ int TFTPFile::append_from_buffer(tftp_packet_t *packet, tftp_transaction_t *tran
 }
 
 int TFTPFile::close() {
-    if (read_file_)
-    {
+    if (read_file_) {
         read_file_->close();
         read_file_ = nullptr;
     }
 
-    if (write_file_)
-    {
+    if (write_file_) {
         write_file_->close();
         write_file_ = nullptr;
     }
 
     return 0;
+}
+
+std::streamsize TFTPFile::get_length() {
+    std::streamsize length = 0;
+
+    if (read_file_)
+    {
+        // get length of file:
+        std::streampos cur_pos = read_file_->tellg();
+
+        read_file_->seekg(0, read_file_->end);
+        length = read_file_->tellg();
+
+        read_file_->seekg(cur_pos, read_file_->cur);
+    }
+
+    if (write_file_)
+        length = write_file_->tellp();
+
+    return length;
+}
+
+std::streampos TFTPFile::get_current_pos() {
+    std::streampos cur_pos = 0;
+
+    if (read_file_)
+        cur_pos = read_file_->tellg();
+
+    if (write_file_)
+        cur_pos = write_file_->tellp();
+
+    return cur_pos;
 }

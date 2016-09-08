@@ -26,6 +26,10 @@ int main(int argc, char* argv[]) {
 
         if (params[4] == "put") {
             std::cout << std::endl;
+            std::cout << "command: " << params[4] << std::endl;
+            std::cout << "host(port): " << params[0] << "(" << params[1] << ")" << std::endl;
+            std::cout << "local file: " << params[2] << std::endl;
+            std::cout << "remote file: " << params[3] << std::endl;
             std::cout << "Now, TFTPClient is going to put a file to TFTP Server." << std::endl << std::endl;
 
             if (tftp_client.put_file(params[2], params[3]))
@@ -35,6 +39,10 @@ int main(int argc, char* argv[]) {
         }
         else {
             std::cout << std::endl;
+            std::cout << "command: " << params[4] << std::endl;
+            std::cout << "host(port): " << params[0] << "(" << params[1] << ")" << std::endl;
+            std::cout << "local file: " << params[2] << std::endl;
+            std::cout << "remote file: " << params[3] << std::endl;
             std::cout << "Now, TFTPClient is going to get a file from TFTP Server." << std::endl << std::endl;
 
             if (tftp_client.get_file(params[2], params[3]))

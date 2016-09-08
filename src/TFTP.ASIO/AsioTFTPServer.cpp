@@ -6,18 +6,52 @@
 #include "AsioTFTPServer.h"
 
 AsioTFTPServer::AsioTFTPServer(boost::asio::io_service& io_service, const std::string& path, const std::string& bind_port) :
-    io_service_(io_service), socket_(io_service, udp::endpoint(udp::v4(), std::stoi(bind_port))) {
+    is_server_stop(true), io_service_(io_service), socket_(io_service), transport_event_handler(nullptr), max_block_size_(0) {
     packet_in_length_ = 0;
     
     // resolve the host name and port number to an iterator that can be used to connect to the server
     tftp_transaction_ = std::make_shared<TFTPServerTransaction>(this, path);
 
-    remote_endpoint_ = server_endpoint_;
+    std::string port = bind_port;
 
-    receive_start();
+    if (bind_port.length() == 0)
+        port = "69";
+
+    try {
+
+        socket_.open(udp::v4());
+        socket_.bind(udp::endpoint(udp::v4(), std::stoi(port)));
+
+        is_server_stop = false;
+
+        remote_endpoint_ = server_endpoint_;
+
+        receive_start();
+    }
+    catch (std::exception& e) {        
+        socket_.close();
+
+        std::cerr << "Exception: " << e.what() << "\n";
+        std::cerr << "Please check what your port(" << port << ") was used by another application." << "\n";
+    }
 }
 
+AsioTFTPServer::AsioTFTPServer(TFTPTransportEvent* event_handler, boost::asio::io_service& io_service, const std::string& path, const std::string& bind_port) : 
+    AsioTFTPServer(io_service, path, bind_port) {
+    transport_event_handler = event_handler;
+}
+
+
 AsioTFTPServer::~AsioTFTPServer() {
+    close();
+}
+
+bool AsioTFTPServer::close() {
+    if (is_server_stop)
+        return true;
+
+    is_server_stop = true;
+
     if (socket_.is_open())
         socket_.close();
 
@@ -25,6 +59,13 @@ AsioTFTPServer::~AsioTFTPServer() {
         tftp_transaction_->stop();
         tftp_transaction_ = nullptr;
     }
+
+    if (transport_event_handler)
+        transport_event_handler->on_tftp_close();
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+    return true;
 }
 
 bool AsioTFTPServer::is_open() {
@@ -34,18 +75,18 @@ bool AsioTFTPServer::is_open() {
 //
 //  implemented functions that are related to TFTPTransport
 //
-bool AsioTFTPServer::is_connect() {
+bool AsioTFTPServer::tftp_is_connect() {
     return socket_.is_open();
 }
 
-bool AsioTFTPServer::has_received_data() {
+bool AsioTFTPServer::tftp_has_received_data() {
     if (packet_in_length_ == 0)
         return false;
 
     return true;
 }
 
-int AsioTFTPServer::send_tftp_data(const char* buf, int size) {
+int AsioTFTPServer::tftp_send_data(const char* buf, int size) {
     try {
         socket_.async_send_to(
             boost::asio::buffer(buf, size), remote_endpoint_,
@@ -60,7 +101,7 @@ int AsioTFTPServer::send_tftp_data(const char* buf, int size) {
     return size;
 }
 
-int AsioTFTPServer::get_received_tftp_data(char* buf, const int max_buf_size) {
+int AsioTFTPServer::tftp_get_received_data(char* buf, const int max_buf_size) {
     // [WARNING!]
     //
     //  by Mansoo Kim
@@ -78,12 +119,33 @@ int AsioTFTPServer::get_received_tftp_data(char* buf, const int max_buf_size) {
     return copy_size;
 }
 
-void AsioTFTPServer::on_completed_transaction()
+void AsioTFTPServer::on_tftp_start_transaction(std::size_t max_block_size) {
+    max_block_size_ = max_block_size;
+
+    if (transport_event_handler)
+        transport_event_handler->on_tftp_start_transaction(max_block_size);
+}
+
+void AsioTFTPServer::on_tftp_progress_transaction(std::size_t current_block_num) {
+    if (transport_event_handler)
+        transport_event_handler->on_tftp_progress_transaction(current_block_num);
+}
+
+void AsioTFTPServer::on_tftp_completed_transaction()
 {
     remote_endpoint_ = server_endpoint_;
 
     receive_start();
+
+    if (transport_event_handler)
+        transport_event_handler->on_tftp_completed_transaction();
 }
+
+void AsioTFTPServer::on_tftp_timeout_transaction() {
+    if (transport_event_handler)
+        transport_event_handler->on_tftp_timeout_transaction();
+}
+
 
 //
 //  functions related to ASIO
@@ -109,15 +171,16 @@ void AsioTFTPServer::handle_send_to(const boost::system::error_code& error, size
 }
 
 void AsioTFTPServer::handle_receive_from(const boost::system::error_code& error, size_t bytes_recvd) {
-    if (!error && bytes_recvd > 0) {
-        packet_in_length_ = bytes_recvd;
+    if (is_server_stop)
+        return;
 
-        tftp_transaction_->data_event();
-    }
-    else {
-        remote_endpoint_ = server_endpoint_;
+    if (!error) {
+        if (bytes_recvd > 0) {
+            packet_in_length_ = bytes_recvd;
 
-        if (socket_.is_open())
-            receive_start();
+            tftp_transaction_->data_event();
+        }
     }
+    else
+        close();
 }

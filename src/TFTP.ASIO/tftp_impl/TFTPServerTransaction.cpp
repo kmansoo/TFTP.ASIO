@@ -78,9 +78,9 @@ void TFTPServerTransaction::data_event() {
 int TFTPServerTransaction::state_standby() {
     int operation = TFTP_OPERATION_FAILED;
 
-    if (transport_->has_received_data()) {
+    if (transport_->tftp_has_received_data()) {
         operation = TFTP_OPERATION_DONE;
-        packet_in_length_ = transport_->get_received_tftp_data(packet_in_buffer_, TFTP_PACKETSIZE);
+        packet_in_length_ = transport_->tftp_get_received_data(packet_in_buffer_, TFTP_PACKETSIZE);
     }
 
     return operation;
@@ -120,15 +120,15 @@ int TFTPServerTransaction::state_wait() {
     transaction_.timed_out = 0;
 
     if (transport_) {
-        if (transport_->has_received_data()) {
-            packet_in_length_ = transport_->get_received_tftp_data(packet_in_buffer_, TFTP_PACKETSIZE);
+        if (transport_->tftp_has_received_data()) {
+            packet_in_length_ = transport_->tftp_get_received_data(packet_in_buffer_, TFTP_PACKETSIZE);
 
             transaction_.timeout_count = 0;
 
             operation = TFTP_OPERATION_DONE;
         }
         else {
-            if (transport_->is_connect() == false)
+            if (transport_->tftp_is_connect() == false)
                 operation = TFTP_OPERATION_FAILED;
         }
     }
@@ -142,6 +142,9 @@ int TFTPServerTransaction::state_wait() {
         if (transaction_.timeout_count == TFTP_TIMEOUT_LIMIT * 200) {
             fprintf(stderr, "# Timeout.\n");
             operation = TFTP_OPERATION_ABANDONED;
+
+            if (transport_)
+                transport_->on_tftp_timeout_transaction();
         }
         else {
             operation = TFTP_OPERATION_FAILED;
@@ -156,7 +159,7 @@ int TFTPServerTransaction::state_send() {
     int operation = TFTP_OPERATION_DONE;
 
     if (transport_)
-        transport_->send_tftp_data(packet_out_, packet_out_length_);
+        transport_->tftp_send_data(packet_out_, packet_out_length_);
 
     if (transaction_.complete == 1 || transaction_.ecode != TFTP_ECODE_NONE) {
         operation = TFTP_OPERATION_ABANDONED;
@@ -178,9 +181,5 @@ int TFTPServerTransaction::state_reset() {
     packet_free();
     init_variables();
 
-    if (transport_)
-        transport_->on_completed_transaction();
-
     return operation;
 }
-

@@ -24,6 +24,10 @@ public:
 
     int read_buffer_from_pos(tftp_transaction_t *transaction);
     int append_from_buffer(tftp_packet_t *packet, tftp_transaction_t *transaction);
+    
+    std::streamsize get_length();
+    std::streampos  get_current_pos();
+
     int close();
 
 private:
