@@ -353,7 +353,7 @@ int TFTPTransaction::packet_receive_wrq() {
 
 int TFTPTransaction::packet_receive_data() {
     if (packet_.blocknum == transaction_.blocknum) {  
-        if (file_->append_from_buffer(&packet_, &transaction_) == -1) {
+        if (file_ && file_->append_from_buffer(&packet_, &transaction_) == -1) {
             strcpy(transaction_.estring, TFTP_ESTRING_2);
             transaction_.ecode = TFTP_ECODE_2;
             packet_free();
@@ -369,7 +369,7 @@ int TFTPTransaction::packet_receive_data() {
         }
     }
     
-    if (packet_.data_length < 512) {
+    if (file_ && packet_.data_length < 512) {
         file_->close();
         file_ = nullptr;
 
