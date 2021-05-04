@@ -90,12 +90,12 @@ bool AsioTFTPClient::put_file(const std::string& localFilePath, const std::strin
 //
 //  implemented functions that are related to TFTPTransport
 //
-bool AsioTFTPClient::is_connect() {
+bool AsioTFTPClient::tftp_is_connect() {
     return socket_.is_open();
 }
 
 
-bool AsioTFTPClient::has_received_data() {
+bool AsioTFTPClient::tftp_has_received_data() {
 
 #ifdef TFTP_CLIENT_SYNC_MODE_ENABLE
     if (packet_in_length_ == 0) {
@@ -116,7 +116,7 @@ bool AsioTFTPClient::has_received_data() {
     return true;
 }
 
-int AsioTFTPClient::send_tftp_data(const char* buf, int size) {
+int AsioTFTPClient::tftp_send_data(const char* buf, int size) {
     try {
 
 #ifdef TFTP_CLIENT_SYNC_MODE_ENABLE
@@ -136,7 +136,7 @@ int AsioTFTPClient::send_tftp_data(const char* buf, int size) {
     return size;
 }
 
-int AsioTFTPClient::get_received_tftp_data(char* buf, const int max_buf_size) {
+int AsioTFTPClient::tftp_get_received_data(char* buf, const int max_buf_size) {
     // [WARNING!]
     //
     //  by Mansoo Kim

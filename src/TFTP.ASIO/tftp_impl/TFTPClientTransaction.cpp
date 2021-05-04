@@ -129,9 +129,17 @@ int TFTPClientTransaction::state_send() {
     if (transport_)
         transport_->tftp_send_data(packet_out_, packet_out_length_);
 
-    if (transaction_.complete == 1 || transaction_.ecode != TFTP_ECODE_NONE) {
+
+    if (transaction_.complete == 1) {
+        if (transport_) 
+            transport_->on_tftp_completed_transaction();
         operation = TFTP_OPERATION_ABANDONED;
     }
+
+    if (transaction_.ecode != TFTP_ECODE_NONE) {
+        operation = TFTP_OPERATION_ABANDONED;
+    }
+
 
     return operation;
 }
