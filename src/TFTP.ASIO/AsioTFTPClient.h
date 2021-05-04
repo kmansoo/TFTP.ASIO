@@ -26,11 +26,11 @@ public:
     bool    put_file(const std::string& localFilePath, const std::string& remoteNewFilePath);
 
 protected:
-    virtual bool is_connect();
-    virtual bool has_received_data();
-    virtual int send_tftp_data(const char* buf, int size);
-    virtual int get_received_tftp_data(char* buf, const int max_buf_size);
-    virtual void on_completed_transaction() {};
+    virtual bool tftp_is_connect();
+    virtual bool tftp_has_received_data();
+    virtual int tftp_send_data(const char* buf, int size);
+    virtual int tftp_get_received_data(char* buf, const int max_buf_size);
+    virtual void tftp_on_completed_transaction() {};
 
 private:
     void    receive_start();
