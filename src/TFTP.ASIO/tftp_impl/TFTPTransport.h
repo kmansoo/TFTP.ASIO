@@ -11,6 +11,9 @@
 //  TFTPTransport class
 
 struct TFTPTransportEvent {
+
+    virtual ~TFTPTransportEvent() {}
+
     //  If you want to process TFTPEvent in your module, you must override following functions.
     //  If you didn't override them, events will be ignored.
     virtual void on_tftp_start_transaction(std::size_t max_block_size) {};
